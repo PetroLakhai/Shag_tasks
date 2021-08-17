@@ -24,24 +24,24 @@
 # all_numbers = {'twin_numbers':[], 'odd_numbers':[]}
 
 
-def class_work(): 
+# def class_work(): 
 
-    trace = 0
-    while trace < 100:
-        trace += 1
-        num =  random.randint(1, 100)
-        if num % 2 == 0: 
-            all_numbers['twin_numbers'].append(num)
-        else:
-            all_numbers['odd_numbers'].append(num)
-    print(all_numbers) 
-    print("Length of elements in twin_numbers is :", len(all_numbers['twin_numbers']))
-    print("Length of elements in odd_numbers is :", len(all_numbers['odd_numbers']))
-    print("Sum of elements in twin_numbers is :", sum(all_numbers['twin_numbers']))
-    print("Sum of elements in odd_numbers is :", sum(all_numbers['odd_numbers']))
+#     trace = 0
+#     while trace < 100:
+#         trace += 1
+#         num =  random.randint(1, 100)
+#         if num % 2 == 0: 
+#             all_numbers['twin_numbers'].append(num)
+#         else:
+#             all_numbers['odd_numbers'].append(num)
+#     print(all_numbers) 
+#     print("Length of elements in twin_numbers is :", len(all_numbers['twin_numbers']))
+#     print("Length of elements in odd_numbers is :", len(all_numbers['odd_numbers']))
+#     print("Sum of elements in twin_numbers is :", sum(all_numbers['twin_numbers']))
+#     print("Sum of elements in odd_numbers is :", sum(all_numbers['odd_numbers']))
 
 
-class_work()
+# class_work()
 
 
 def probability():
@@ -58,3 +58,4 @@ def probability():
     # Statisticaly this calculation is not reliable, because each probability is random and every time is new.
 
 probability()
+
