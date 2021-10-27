@@ -12,6 +12,8 @@ environ.Env.read_env()  # reading .env file
 BOT_TOKEN = env('TELEGRAM_TOKEN')
 bot = telebot.TeleBot(BOT_TOKEN)
 
+DATE_FORMAT = '%Y-%m-%d'
+
 
 @bot.message_handler(commands='start')
 def handler(message):
@@ -26,30 +28,39 @@ def handler(message):
 
 
 @bot.message_handler(content_types=['text'], func=lambda message: True)
-def handler_text(message):
+def bot_message_handler(message):
+    """
+    Gets message from user, validates the data and creates dictionary for keyboard.
+    """
     text = message.text
+    chat_id = message.chat.id
 
     try:
-        date = datetime.datetime.strftime(datetime.datetime.strptime(text, '%Y-%m-%d'), '%Y-%m-%d')
-        result = collect_exchange_rates(date)
-        if len(result) == 0:
-            bot.send_message(message.chat.id, "NBU provides currency exchange rate only in working dates. \n"
-                                              "You tried to find exchange rates for day for which rates do not exist.\n "
-                                              "There is no exchange rates for the day. \n"
-                                              "Please, choose other day.")
-            return
+        raw_date = datetime.datetime.strptime(text, DATE_FORMAT)
+        date = datetime.datetime.strftime(raw_date, DATE_FORMAT)
 
     except ValueError:
-        bot.send_message(message.chat.id, "Incorrect data format, should be YYYY-MM-DD. \n"
-                                          "Please, try again!")
+        bot.send_message(chat_id, "Incorrect data format, should be YYYY-MM-DD. \n"
+                                  "Please, try again!")
         return
 
-    bot.send_message(message.chat.id, "Please, choose the following exchange rate:", reply_markup=gen_markup(result))
+    result = collect_exchange_rates(date)
+    if not result:
+        bot.send_message(chat_id, "NBU provides currency exchange rate only in working dates. \n"
+                                  "You tried to find exchange rates for day for which rates do not exist.\n"
+                                  "There is no exchange rates for the day. \n"
+                                  "Please, choose other day.")
+
+        return
+
+    bot.send_message(
+        chat_id, "Please, choose the following exchange rate:", reply_markup=generate_keyboard_markup(result)
+    )
 
 
-def gen_markup(result):
+def generate_keyboard_markup(result):
     markup = InlineKeyboardMarkup()
-    markup.row_width = 3
+    markup.row_width = 3  # Generates three buttons
     markup.add(
         InlineKeyboardButton("UAH/USD", callback_data=result['USD']),
         InlineKeyboardButton("UAH/EUR", callback_data=result['EUR']),
@@ -59,33 +70,32 @@ def gen_markup(result):
 
 
 @bot.callback_query_handler(func=lambda call: True)
-def callback_query(call):
-    print(call.data)
+def provide_exchange_rate(call):
+    """
+    Gets callback data from Telegram API and provides exchange rates from it.
+    """
     bot.send_message(call.message.chat.id, call.data)
 
 
-def collect_exchange_rates(date):  # The data easy to collect using National Bank`s API, but I created scraper to exercise.
-
-    scraped_data = []
+def collect_exchange_rates(date):
+    """
+    Gets date, scrapes exchange rates from NBU`s website and provides dictionary with them.
+    """
     url = f'https://bank.gov.ua/en/markets/exchangerates?date={date}&period=daily'
     result = requests.get(url)
     soup = bs4.BeautifulSoup(result.text, 'lxml')
-    for item in soup.select('tbody tr td'):
-        scraped_data.append(item.text)
+    scraped_data = [item.text for item in soup.select('tbody tr td')]
 
     abbreviations = scraped_data[1::5]
     currency_quantity = scraped_data[2::5]
-    row_exchange_rate = scraped_data[4::5]
-    exchange_rates = []
+    raw_exchange_rate = scraped_data[4::5]
 
-    for quantity, rate in zip(currency_quantity, row_exchange_rate):
-        _result = round(float(rate)/float(quantity), 2)
-        exchange_rates.append(_result)
+    exchange_rates = [
+        round(float(rate)/float(quantity), 2) for quantity, rate in zip(currency_quantity, raw_exchange_rate)
+    ]
 
-    data_for_bot = {}
+    data_for_bot = {abbreviation: exchange_rate for abbreviation, exchange_rate in zip(abbreviations, exchange_rates)}
 
-    for abbreviation, exchange_rate in zip(abbreviations, exchange_rates):
-        data_for_bot[abbreviation] = exchange_rate
     return data_for_bot
 
 
